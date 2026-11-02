@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+# Original materials include customer records. Do not publish them by accident.
+material/
+preparacao.md
+enunciado-extraido.txt
