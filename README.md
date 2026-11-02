@@ -2,14 +2,20 @@
 
 Work in progress for the Artefact AI Engineer challenge. Author: Marcelo Rodrigues.
 
-## Current milestone: local catalog and promotion tools
+## Current milestone: local catalog, promotions and policy retrieval
 
 This milestone implements a read-only catalog query tool and CLI. It is **not yet
-the conversational LLM agent**. Model integration, policy retrieval and real
+the conversational LLM agent**. Model integration and real
 conversation examples are still pending.
 
-Python 3.14.2 was used for local validation. This milestone uses only the Python
-standard library and makes no network requests.
+Python 3.14.2 was used for local validation. Catalog queries use the standard
+library. Policy extraction uses `pypdf`. Queries make no network requests.
+
+Install the PDF dependency before running policy queries or the full test suite:
+
+```powershell
+python -m pip install -r requirements.txt
+```
 
 Run from the project directory:
 
@@ -18,6 +24,7 @@ python -m emporio "Takamine GD20"
 python -m emporio --category "Violões" --max-price 1000 --available-only
 python -m emporio "Giannini GF-3D"
 python -m emporio "Ohana CK-20" --max-price 450 --available-only
+python -m emporio --policy "Posso devolver minha compra online?"
 python -m unittest discover -s tests -v
 ```
 
@@ -30,6 +37,8 @@ Keep the supplied CSV files in `material/`, with their original names:
 Original materials are excluded from Git because the full package contains
 customer data. A safe, reproducible public data setup is pending before publication.
 No original files are modified. Only product, category and promotion files are loaded.
+Policy queries also require the supplied `políticas_da_loja.pdf` in `material/`.
+Customer and order CSV files are never loaded.
 
 ## Optional Makefile shortcuts
 
@@ -42,13 +51,34 @@ make help
 make test
 make catalog
 make demo
+make policy
 ```
 
 On systems where Python is named `python3`, use `make test PYTHON=python3`
 (and the same override for other targets).
 GNU Make is optional and is not included with a standard Windows PowerShell
 installation. Without it, use the direct Python commands above; they perform
-the same operations. No package installation is needed for this milestone.
+the same operations. The PDF dependency must still be installed separately.
+
+## Policy retrieval
+
+The PDF is extracted at runtime into pages, with whitespace normalized and page
+numbers preserved. A small lexical search ranks pages by distinct matching terms,
+ignoring common Portuguese words and expanding a limited set of word variants.
+Up to three whole pages are returned to preserve nearby conditions. This is a
+transparent baseline for an eight-page manual; no vector database is needed.
+
+Results are candidate evidence, not generated answers. No overlap returns no
+evidence. Word overlap alone cannot establish that a question is answered.
+Paraphrases may be missed, irrelevant matches can occur, and some rules continue
+on another page. Scanned PDFs without extractable text are rejected; OCR is not
+implemented. These limitations must be considered during model integration.
+
+Known source ambiguities are explicitly flagged for related searches: different
+contact details (pages 1–2 and 6), conflicting installment minimums (page 3), and
+the undefined local delivery fee at exactly BRL 500 (page 4). These flags were
+identified during review; this is not automatic detection of arbitrary conflicts.
+Store clarification is required rather than choosing a rule without evidence.
 
 ## Decisions
 
@@ -72,7 +102,7 @@ the same operations. No package installation is needed for this milestone.
 
 ## Next steps and limitations
 
-Add model tool calling and page-cited policy retrieval. Validate
+Add model tool calling using the catalog and policy tools. Validate
 unsupported questions, missing evidence and conflicting policies. Generate 3–5
 example conversations from real executions. Review a safe public dataset setup.
 The presence of a `GEMINI_API_KEY` environment variable was detected locally;

@@ -16,7 +16,28 @@ def main() -> None:
     parser.add_argument("--category", help="Categoria exata, por exemplo: Violões")
     parser.add_argument("--max-price", help="Preço máximo após promoção ativa, por exemplo: 1000.00")
     parser.add_argument("--available-only", action="store_true")
+    parser.add_argument("--policy", action="store_true", help="Buscar páginas do manual em vez de produtos")
     args = parser.parse_args()
+    if args.policy:
+        if args.category is not None or args.max_price is not None or args.available_only:
+            parser.error("Não combine --policy com filtros de produtos.")
+        try:
+            from emporio.policies import Policies
+            policies = Policies()
+            pages = policies.search(args.query)
+            if not pages:
+                print("Não encontrei evidência para esses termos no manual. Tente reformular ou confirme com a loja.")
+                return
+            for warning in policies.cautions(args.query):
+                print(f"Atenção: {warning}")
+            for page in pages:
+                print(f"\nFonte: {policies.path.name}, página {page.page}\n{page.text}")
+            print("\nBusca por palavras: estes trechos são evidências candidatas, não uma resposta ou aprovação de solicitação. Algumas regras continuam na página seguinte.")
+        except ImportError:
+            parser.exit(2, "Instale a dependência do PDF: python -m pip install -r requirements.txt\n")
+        except (ValueError, OSError) as error:
+            parser.exit(2, f"Não foi possível consultar as políticas: {error}\n")
+        return
     try:
         products = Catalog().search(
             args.query, category=args.category,

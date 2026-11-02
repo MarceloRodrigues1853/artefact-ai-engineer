@@ -1,11 +1,12 @@
 PYTHON ?= python
 
-.PHONY: help test catalog demo
+.PHONY: help test catalog demo policy
 
 help:
 	@echo "make test     - Run automated tests"
 	@echo "make catalog  - List available guitars up to BRL 1000"
 	@echo "make demo     - Show an active promotion within a budget"
+	@echo "make policy   - Retrieve online return policy evidence"
 	@echo "Override Python if needed: make test PYTHON=python3"
 
 test:
@@ -16,3 +17,6 @@ catalog:
 
 demo:
 	$(PYTHON) -m emporio "Ohana CK-20" --max-price 450 --available-only
+
+policy:
+	$(PYTHON) -m emporio --policy "devolver compra online"
