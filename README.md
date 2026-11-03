@@ -105,8 +105,39 @@ Store clarification is required rather than choosing a rule without evidence.
 Add model tool calling using the catalog and policy tools. Validate
 unsupported questions, missing evidence and conflicting policies. Generate 3–5
 example conversations from real executions. Review a safe public dataset setup.
-The presence of a `GEMINI_API_KEY` environment variable was detected locally;
-API access, model choice and quota have not been validated.
+Gemini authentication and a short real generation were successfully tested with
+`gemini-3.1-flash-lite`. Future requests remain subject to account quota and billing
+settings; successful access does not establish that usage is free.
+
+## Gemini connection diagnostic
+
+The initial API client uses Python's standard HTTP library, following the
+[Gemini generateContent API](https://ai.google.dev/api/generate-content).
+It needs no additional SDK or agent framework. The default model is
+[`gemini-3.1-flash-lite`](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite),
+which was available to the configured key during validation. Override its name
+with `GEMINI_MODEL` if necessary; the client does not switch models automatically.
+
+Set `GEMINI_API_KEY` in your local environment using your normal credential
+management method. Never paste it into chat, source code or Git. This version
+reads environment variables; it does not load `.env` files automatically.
+
+```powershell
+python -m emporio --check-model
+```
+
+This diagnostic makes one real generation request with a fixed short prompt,
+sends no catalog, policy or customer data, and prints the model response.
+It is not a customer conversation and does not call the catalog or policy tools.
+API usage is subject to your account's pricing and quota. Network errors, quota
+errors and incomplete responses are reported without raw API error bodies or
+credentials. There are no automatic retries. The key is transmitted over HTTPS
+in a request header, never in the URL.
+
+The automated API tests use mocked responses and make no network requests.
+Run the diagnostic separately to verify real access. A DNS failure in the
+restricted development environment was resolved by running the diagnostic with
+network access; users still need working DNS and HTTPS connectivity locally.
 
 The internal completion target is November 3, 2026. This is not a confirmed
 official deadline. The email and challenge document describe different delivery

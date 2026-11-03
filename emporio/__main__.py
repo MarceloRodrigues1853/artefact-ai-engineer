@@ -17,7 +17,19 @@ def main() -> None:
     parser.add_argument("--max-price", help="Preço máximo após promoção ativa, por exemplo: 1000.00")
     parser.add_argument("--available-only", action="store_true")
     parser.add_argument("--policy", action="store_true", help="Buscar páginas do manual em vez de produtos")
+    parser.add_argument("--check-model", action="store_true", help="Enviar uma mensagem curta de diagnóstico ao Gemini")
     args = parser.parse_args()
+    if args.check_model:
+        if args.query or args.policy or args.category is not None or args.max_price is not None or args.available_only:
+            parser.error("Use --check-model sozinho.")
+        from emporio.gemini import GeminiClient, GeminiError
+        try:
+            client = GeminiClient()
+            print(f"Teste de conexão e geração com {client.model}; sem dados da loja.")
+            print(client.generate("Responda apenas com esta frase: Conexão com o Gemini funcionando."))
+        except GeminiError as error:
+            parser.exit(2, f"Não foi possível concluir o teste: {error}\n")
+        return
     if args.policy:
         if args.category is not None or args.max_price is not None or args.available_only:
             parser.error("Não combine --policy com filtros de produtos.")
