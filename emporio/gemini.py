@@ -28,6 +28,20 @@ class GeminiClient:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"maxOutputTokens": 128},
         }
+        return self.text(self.request(payload))
+
+    @staticmethod
+    def text(content: dict) -> str:
+        parts = content["parts"]
+        if any("functionCall" in part for part in parts):
+            raise GeminiError("O modelo solicitou outra consulta em vez de responder.")
+        text = "".join(part.get("text", "") for part in parts if not part.get("thought"))
+        if not text.strip():
+            raise GeminiError("O modelo não retornou uma resposta de texto.")
+        return text.strip()
+
+    def request(self, payload: dict) -> dict:
+        """Return full model content, preserving function-call IDs and signatures."""
         request = Request(
             f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
             data=json.dumps(payload).encode("utf-8"),
@@ -59,8 +73,9 @@ class GeminiClient:
         candidate = candidates[0]
         if candidate.get("finishReason") != "STOP":
             raise GeminiError("O modelo não concluiu uma resposta normal; saída parcial omitida.")
-        parts = candidate.get("content", {}).get("parts", [])
-        text = "".join(part.get("text", "") for part in parts if not part.get("thought"))
-        if not text.strip():
-            raise GeminiError("O modelo não retornou uma resposta de texto.")
-        return text.strip()
+        content = candidate.get("content")
+        if not isinstance(content, dict) or not isinstance(content.get("parts"), list) or not content["parts"]:
+            raise GeminiError("O modelo não retornou conteúdo utilizável.")
+        if any(not isinstance(part, dict) for part in content["parts"]):
+            raise GeminiError("O modelo retornou conteúdo inesperado.")
+        return content

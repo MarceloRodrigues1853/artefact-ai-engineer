@@ -2,14 +2,15 @@
 
 Work in progress for the Artefact AI Engineer challenge. Author: Marcelo Rodrigues.
 
-## Current milestone: local catalog, promotions and policy retrieval
+## Current milestone: conversational CLI agent
 
-This milestone implements a read-only catalog query tool and CLI. It is **not yet
-the conversational LLM agent**. Model integration and real
-conversation examples are still pending.
+The agent answers customer questions using read-only catalog tools and policy
+retrieval. Gemini selects a tool; Python executes the query; Gemini writes an
+answer based on the result. Direct tool inspection commands remain available.
 
 Python 3.14.2 was used for local validation. Catalog queries use the standard
-library. Policy extraction uses `pypdf`. Queries make no network requests.
+library. Policy extraction uses `pypdf`. Direct catalog and policy queries are
+offline; conversational commands send messages and retrieved evidence to Gemini.
 
 Install the PDF dependency before running policy queries or the full test suite:
 
@@ -40,6 +41,78 @@ No original files are modified. Only product, category and promotion files are l
 Policy queries also require the supplied `políticas_da_loja.pdf` in `material/`.
 Customer and order CSV files are never loaded.
 
+## Talk to the agent
+
+After installing the dependency, placing the supplied files in `material/` and
+configuring `GEMINI_API_KEY` in your terminal environment:
+
+```powershell
+python -m emporio --ask "Quanto custa o Takamine GD20?" --trace
+python -m emporio --ask "Quero o Ohana CK-20. Posso somar promoção e PIX?" --trace
+python -m emporio --chat --trace
+```
+
+In chat mode, type a question and press Enter. Type `sair` to finish.
+`--trace` reports the actual Python tool names and number of returned references;
+it does not display model reasoning or credentials. Source references are appended
+by Python, separately from the generated text. They identify consulted records,
+not a guarantee that every generated sentence has been verified.
+For catalog-based answers, Python also appends a fixed notice that prices and
+availability come from the supplied files, not a live store integration. The
+prompt asks the model to use the same distinction in its own wording.
+
+### Request flow and boundaries
+
+1. Send the question, up to six previous exchanges, tool definitions and system
+   instructions to Gemini. Native function calling requires a tool selection.
+2. Accept one to three calls from an explicit allowlist: `catalogo`, `politicas`
+   or `orientar`. Validate arguments before executing local read-only functions.
+3. Send tool results back to Gemini to write the final answer, with further
+   function calls disabled. Preserve the original function-call content and IDs.
+4. Append source references and retain only completed user/answer pairs in memory.
+
+Each turn uses at most two API requests. There are no automatic retries or
+autonomous repeated tool rounds. A single question can request catalog and policy
+evidence together. Dependent multi-step searches may require another user turn.
+Catalog results are limited to the first ten matches sorted by final price;
+the response should present at most five choices. The total match count is supplied.
+
+The `orientar` function selects fixed responses for greetings, clarification,
+out-of-scope questions and private customer/order requests. Empty retrievals also
+produce a fixed absence-of-evidence response. No customer/order tool exists, and
+neither customer nor order files are loaded. The LLM selects the route; routing
+and prose can still be wrong and require evaluation.
+
+Conversation context is temporary: restarting the CLI clears it, no local chat
+database is written, and failed turns do not enter the context. Messages and
+evidence are processed by the configured Google API; avoid personal data in input.
+Examples under `examples/` are explicitly saved validation runs, not automatic
+logging of ordinary customer sessions.
+
+The system prompt sets the informal, professional persona and requires evidence,
+clarification of missing conditions, no promises of actions and caution around
+conflicting policies. It also treats user and retrieved text as data, not authority
+to override instructions. Prompt instructions reduce risk but do not guarantee
+that every final claim is correct. Prices are calculated in Python; PIX quotes
+and installment calculations are not implemented, and no discounts are stacked.
+
+### Recorded validation examples
+
+- `examples/01-products.md`: current price and availability response with the
+  fixed notice that the data is a snapshot.
+- `examples/02-unavailable.md`: earlier unavailable-product and missing-evidence
+  conversation, recorded before the snapshot wording correction.
+- `examples/03-policies.md`: a live turn combining the product promotion with
+  the policy that prohibits stacking the PIX discount. Recorded after the
+  source-footer fix and before the snapshot wording correction.
+- `examples/04-scope-and-privacy.md`: successful out-of-scope routing followed by
+  a real HTTP 503 on a privacy question. No successful answer is claimed for the
+  failed turn. Privacy routing has been validated with mocked selections only.
+
+These are actual outputs, including their documented limitations, rather than
+handwritten ideal conversations. The automated suite currently has 26 tests and
+runs offline; live calls were performed separately with the configured model.
+
 ## Optional Makefile shortcuts
 
 A Makefile groups common commands into short names. It does not install Python,
@@ -52,6 +125,7 @@ make test
 make catalog
 make demo
 make policy
+make chat
 ```
 
 On systems where Python is named `python3`, use `make test PYTHON=python3`
@@ -72,7 +146,7 @@ Results are candidate evidence, not generated answers. No overlap returns no
 evidence. Word overlap alone cannot establish that a question is answered.
 Paraphrases may be missed, irrelevant matches can occur, and some rules continue
 on another page. Scanned PDFs without extractable text are rejected; OCR is not
-implemented. These limitations must be considered during model integration.
+implemented. The model must consider these limitations when using the evidence.
 
 Known source ambiguities are explicitly flagged for related searches: different
 contact details (pages 1–2 and 6), conflicting installment minimums (page 3), and
@@ -102,9 +176,18 @@ Store clarification is required rather than choosing a rule without evidence.
 
 ## Next steps and limitations
 
-Add model tool calling using the catalog and policy tools. Validate
-unsupported questions, missing evidence and conflicting policies. Generate 3–5
-example conversations from real executions. Review a safe public dataset setup.
+Review a safe, reproducible public dataset setup and final delivery materials.
+Policy retrieval is lexical rather than semantic; generated text and routing can
+be incorrect. No purchasing, reservation, refund execution, authenticated order
+lookup or live inventory integration is implemented. With more time, improve
+retrieval relevance, expand adversarial evaluations and validate generated claims
+against structured results. Do not treat this prototype as production software.
+During initial live validation, the model duplicated a source footer and added an
+unsupported starting point for a refund deadline. The program now replaces that
+footer with actual tool sources, and the prompt explicitly prohibits inventing
+deadline triggers. The latter is an instruction, not a deterministic factuality
+guarantee; policy answers still need careful review. Temporary HTTP 503 and network
+failures were also observed and surfaced to the caller without automatic retries.
 Gemini authentication and a short real generation were successfully tested with
 `gemini-3.1-flash-lite`. Future requests remain subject to account quota and billing
 settings; successful access does not establish that usage is free.
@@ -147,6 +230,8 @@ before submission.
 ## Coding assistant use
 
 OpenAI Codex helped inspect the supplied schemas, propose the incremental design,
-write the catalog and promotion tools and tests, and run local checks. Development is
+write the catalog, policy, Gemini and agent code and tests, and run local checks.
+It also recorded real model conversations without inventing their outputs. Development is
 being reviewed with Marcelo in small milestones so he can understand and explain
-the decisions. No commits, publication or submission are authorized at this stage.
+the decisions. Marcelo manually reviews, commits and pushes completed milestones.
+Publication and submission require separate review and authorization.

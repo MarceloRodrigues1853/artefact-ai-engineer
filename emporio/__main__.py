@@ -18,7 +18,52 @@ def main() -> None:
     parser.add_argument("--available-only", action="store_true")
     parser.add_argument("--policy", action="store_true", help="Buscar páginas do manual em vez de produtos")
     parser.add_argument("--check-model", action="store_true", help="Enviar uma mensagem curta de diagnóstico ao Gemini")
+    parser.add_argument("--ask", metavar="PERGUNTA", help="Perguntar ao atendente usando as ferramentas da loja")
+    parser.add_argument("--chat", action="store_true", help="Conversar com contexto temporário; digite sair para encerrar")
+    parser.add_argument("--trace", action="store_true", help="Mostrar ferramentas e fontes consultadas no atendimento")
     args = parser.parse_args()
+    if args.ask is not None or args.chat:
+        if (args.ask is not None and args.chat) or args.query or args.policy or args.check_model or args.category is not None or args.max_price is not None or args.available_only:
+            parser.error("Use --ask PERGUNTA ou --chat, opcionalmente com --trace, sem filtros de consulta direta.")
+        from emporio.gemini import GeminiError
+        try:
+            from emporio.agent import StoreAgent
+            agent = StoreAgent()
+        except ImportError:
+            parser.exit(2, "Instale a dependência do PDF: python -m pip install -r requirements.txt\n")
+        except (GeminiError, ValueError, OSError, KeyError) as error:
+            parser.exit(2, f"Não foi possível iniciar o atendimento: {error}\n")
+
+        def respond(question):
+            try:
+                answer = agent.ask(question)
+                if args.trace:
+                    for trace in agent.last_trace:
+                        print(f"[consulta] {trace['tool']}: {len(trace['sources'])} referências retornadas")
+                print(f"Empório: {answer}")
+                return True
+            except (GeminiError, ValueError, OSError) as error:
+                print(f"Não foi possível responder: {error}")
+                return False
+
+        if args.ask is not None:
+            if not respond(args.ask):
+                parser.exit(2)
+            return
+        print("Atendimento iniciado. Digite sair para encerrar. Contexto mantido apenas nesta sessão.")
+        print("As mensagens e os resultados consultados são enviados ao Gemini. Não informe dados pessoais.")
+        try:
+            while True:
+                question = input("Você: ").strip()
+                if question.casefold() in {"sair", "exit", "quit"}:
+                    break
+                if question:
+                    respond(question)
+        except (EOFError, KeyboardInterrupt):
+            print("\nAtendimento encerrado.")
+        return
+    if args.trace:
+        parser.error("Use --trace com --ask ou --chat.")
     if args.check_model:
         if args.query or args.policy or args.category is not None or args.max_price is not None or args.available_only:
             parser.error("Use --check-model sozinho.")
