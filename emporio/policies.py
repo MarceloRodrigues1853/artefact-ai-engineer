@@ -37,7 +37,7 @@ class Policies:
         if path is None:
             paths = list(DEFAULT_DATA_DIR.glob("pol*.pdf"))
             if len(paths) != 1:
-                raise ValueError("Expected exactly one policy PDF in material/")
+                raise ValueError("Expected exactly one policy PDF in data/")
             path = paths[0]
         self.path = Path(path)
         reader = PdfReader(self.path)

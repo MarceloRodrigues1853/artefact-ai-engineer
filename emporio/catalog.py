@@ -7,7 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "material"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 def normalize(text: str) -> str:

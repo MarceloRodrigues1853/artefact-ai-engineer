@@ -12,7 +12,43 @@ Python 3.14.2 was used for local validation. Catalog queries use the standard
 library. Policy extraction uses `pypdf`. Direct catalog and policy queries are
 offline; conversational commands send messages and retrieved evidence to Gemini.
 
-Install the PDF dependency before running policy queries or the full test suite:
+## Setup from a clone or ZIP
+
+Download the repository ZIP and extract it, or clone the development branch:
+
+```sh
+git clone --branch feat/catalog https://github.com/MarceloRodrigues1853/artefact-ai-engineer.git
+cd artefact-ai-engineer
+```
+
+The included `data/` directory is sufficient for offline catalog queries, policy
+queries and all automated tests. No original attachment download is needed.
+Install Python first if it is not available. Validation used Python 3.14.2;
+other Python versions have not been validated.
+
+On Windows PowerShell, create an isolated environment and install the dependency:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m emporio "Takamine GD20"
+.\.venv\Scripts\python.exe -m emporio --policy "horário de funcionamento"
+```
+
+On macOS or Linux, the equivalent setup is:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m emporio "Takamine GD20"
+```
+
+Environment activation is optional: the explicit interpreter paths above avoid
+changing PowerShell script execution settings. For every command below, replace
+`python` with `.\.venv\Scripts\python.exe` on Windows or `.venv/bin/python` on
+macOS/Linux. If using an existing configured Python environment, install with:
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -31,19 +67,22 @@ python -m unittest discover -s tests -v
 
 ## Data setup
 
-Keep the supplied CSV files in `material/`, with their original names:
+The repository includes the supplied CSV files in `data/`, with their original names:
 `desafio_tecnico_ai_eng - products.csv`,
 `desafio_tecnico_ai_eng - categories.csv` and
 `desafio_tecnico_ai_eng - promotions.csv`.
-Original materials are excluded from Git because the full package contains
-customer data. A safe, reproducible public data setup is pending before publication.
-No original files are modified. Only product, category and promotion files are loaded.
-Policy queries also require the supplied `políticas_da_loja.pdf` in `material/`.
-Customer and order CSV files are never loaded.
+The supplied `políticas_da_loja.pdf` is included in the same directory.
+Only product, category, promotion and policy files are read. The four data files
+are byte-identical copies of the provided sources. Original attachments remain
+unchanged in the local, ignored `material/` folder, which is not needed to run
+this repository. See `data/README.md` for provenance and scope.
+Customer, order and order-item CSVs are excluded and never loaded. No API key or
+personal preparation notes are included. The published subset describes the
+fictional store and its catalog, not real customers.
 
 ## Talk to the agent
 
-After installing the dependency, placing the supplied files in `material/` and
+After installing the dependency and
 configuring `GEMINI_API_KEY` in your terminal environment:
 
 ```powershell
@@ -115,8 +154,8 @@ runs offline; live calls were performed separately with the configured model.
 
 ## Optional Makefile shortcuts
 
-A Makefile groups common commands into short names. It does not install Python,
-provide the data files or replace the setup instructions above.
+A Makefile groups common commands into short names. It does not install Python
+or replace the setup instructions above. Required source files are in `data/`.
 If GNU Make is already installed, run these from the project directory:
 
 ```sh
@@ -130,6 +169,9 @@ make chat
 
 On systems where Python is named `python3`, use `make test PYTHON=python3`
 (and the same override for other targets).
+To use the virtual environment, set `PYTHON` to its interpreter path, for example
+`make test PYTHON=.venv/bin/python` on macOS/Linux, or
+`make test PYTHON=.venv/Scripts/python.exe` with GNU Make on Windows.
 GNU Make is optional and is not included with a standard Windows PowerShell
 installation. Without it, use the direct Python commands above; they perform
 the same operations. The PDF dependency must still be installed separately.
@@ -176,7 +218,14 @@ Store clarification is required rather than choosing a rule without evidence.
 
 ## Next steps and limitations
 
-Review a safe, reproducible public dataset setup and final delivery materials.
+Reproduction was validated on Windows with Python 3.14.2 in a fresh virtual
+environment containing only the selected repository files and `data/`. The
+original `material/` folder, local guidance and API keys were absent. Installing
+`requirements.txt` succeeded; all 26 offline tests, product and promotion queries,
+and the opening-hours policy query passed. Missing-key handling was also checked
+without making a model call. macOS/Linux instructions have not been executed.
+
+Finalize the delivery materials and review publication settings before submission.
 Policy retrieval is lexical rather than semantic; generated text and routing can
 be incorrect. No purchasing, reservation, refund execution, authenticated order
 lookup or live inventory integration is implemented. With more time, improve
@@ -204,6 +253,34 @@ with `GEMINI_MODEL` if necessary; the client does not switch models automaticall
 Set `GEMINI_API_KEY` in your local environment using your normal credential
 management method. Never paste it into chat, source code or Git. This version
 reads environment variables; it does not load `.env` files automatically.
+
+If the variable is not already configured, enter it in a hidden PowerShell prompt
+(the value is available only to this terminal and its child processes):
+
+```powershell
+$geminiKeyInput = Read-Host "Gemini API key" -AsSecureString
+$env:GEMINI_API_KEY = [System.Net.NetworkCredential]::new('', $geminiKeyInput).Password
+Remove-Variable geminiKeyInput
+```
+
+On Bash, prompt without echoing the key:
+
+```sh
+read -r -s -p "Gemini API key: " GEMINI_API_KEY
+echo
+export GEMINI_API_KEY
+```
+
+Then run the diagnostic with the virtual-environment interpreter, for example:
+
+```powershell
+.\.venv\Scripts\python.exe -m emporio --check-model
+.\.venv\Scripts\python.exe -m emporio --chat --trace
+```
+
+No Gemini key or internet connection is needed to run the offline queries or
+automated tests. Dependency installation needs access to the Python package index;
+real model calls need Google API access and an account with available quota.
 
 ```powershell
 python -m emporio --check-model
