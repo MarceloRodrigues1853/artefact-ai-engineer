@@ -1,12 +1,19 @@
 # Empório da Música — customer service agent
 
-Work in progress for the Artefact AI Engineer challenge. Author: Marcelo Rodrigues.
+Python prototype for the Artefact AI Engineer challenge. Author: Marcelo Rodrigues.
 
-## Current milestone: conversational CLI agent
+## Overview
 
 The agent answers customer questions using read-only catalog tools and policy
 retrieval. Gemini selects a tool; Python executes the query; Gemini writes an
 answer based on the result. Direct tool inspection commands remain available.
+The solution uses native function calling plus local lexical retrieval of policy
+pages. One attendant and plain Python make the flow easy to inspect and maintain.
+Gemini was chosen because API access was already available; no new service was
+purchased. The Flash-Lite model was selected for a small text-and-tools prototype
+and validated with real requests, rather than adding an agent framework.
+
+See [the technical summary](docs/technical-summary.md) for a compact overview.
 
 Python 3.14.2 was used for local validation. Catalog queries use the standard
 library. Policy extraction uses `pypdf`. Direct catalog and policy queries are
@@ -144,9 +151,9 @@ and installment calculations are not implemented, and no discounts are stacked.
 - `examples/03-policies.md`: a live turn combining the product promotion with
   the policy that prohibits stacking the PIX discount. Recorded after the
   source-footer fix and before the snapshot wording correction.
-- `examples/04-scope-and-privacy.md`: successful out-of-scope routing followed by
-  a real HTTP 503 on a privacy question. No successful answer is claimed for the
-  failed turn. Privacy routing has been validated with mocked selections only.
+- `examples/04-scope-and-privacy.md`: successful out-of-scope routing, an earlier
+  HTTP 503 on a privacy question, and a separate successful live privacy refusal.
+  The failed turn is preserved and is not presented as a successful answer.
 
 These are actual outputs, including their documented limitations, rather than
 handwritten ideal conversations. The automated suite currently has 26 tests and
@@ -216,7 +223,7 @@ Store clarification is required rather than choosing a rule without evidence.
 - Customer and order lookup is excluded from the initial scope: a public chat
   needs proper authentication before disclosing order information.
 
-## Next steps and limitations
+## Validation, limitations and future work
 
 Reproduction was validated on Windows with Python 3.14.2 in a fresh virtual
 environment containing only the selected repository files and `data/`. The
@@ -225,7 +232,6 @@ original `material/` folder, local guidance and API keys were absent. Installing
 and the opening-hours policy query passed. Missing-key handling was also checked
 without making a model call. macOS/Linux instructions have not been executed.
 
-Finalize the delivery materials and review publication settings before submission.
 Policy retrieval is lexical rather than semantic; generated text and routing can
 be incorrect. No purchasing, reservation, refund execution, authenticated order
 lookup or live inventory integration is implemented. With more time, improve
@@ -299,11 +305,6 @@ Run the diagnostic separately to verify real access. A DNS failure in the
 restricted development environment was resolved by running the diagnostic with
 network access; users still need working DNS and HTTPS connectivity locally.
 
-The internal completion target is November 3, 2026. This is not a confirmed
-official deadline. The email and challenge document describe different delivery
-channels; both delivery materials must be prepared and the channel clarified
-before submission.
-
 ## Coding assistant use
 
 OpenAI Codex helped inspect the supplied schemas, propose the incremental design,
@@ -311,4 +312,3 @@ write the catalog, policy, Gemini and agent code and tests, and run local checks
 It also recorded real model conversations without inventing their outputs. Development is
 being reviewed with Marcelo in small milestones so he can understand and explain
 the decisions. Marcelo manually reviews, commits and pushes completed milestones.
-Publication and submission require separate review and authorization.
